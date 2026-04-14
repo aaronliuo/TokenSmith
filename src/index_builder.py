@@ -12,6 +12,7 @@ import pickle
 import pathlib
 import re
 import json
+import textwrap
 from typing import List, Dict
 
 import faiss
@@ -20,6 +21,7 @@ from src.embedder import SentenceTransformer
 
 from src.preprocessing.chunking import DocumentChunker, ChunkConfig
 from src.preprocessing.extraction import extract_sections_from_markdown
+from src.generator import run_llama_cpp, text_cleaning, ANSWER_END, ANSWER_START
 
 # ----- runtime parallelism knobs (avoid oversubscription) -----
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -32,6 +34,29 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 # Default keywords to exclude sections
 DEFAULT_EXCLUSION_KEYWORDS = ['questions', 'exercises', 'summary', 'references']
 
+def build_summary(text: str, model_path: str):
+    prompt = textwrap.dedent(f"""\
+        <|im_start|>system
+        You are a academic helpful assistant. Your task is to provide a concise summary of the provided text. 
+        Focus on main concepts, key points, and overarching themes.
+        <|im_end|>
+        <|im_start|>user
+        Text Content:
+        {text[:12000]}
+        
+        Provide a summary. End with {ANSWER_END}
+        <|im_end|>
+        <|im_start|>assistant
+        {ANSWER_START}
+    """)
+    prompt = text_cleaning(prompt)
+    try:
+        summary = run_llama_cpp(prompt, model_path, max_tokens=400, temperature=0.7)
+        return summary["choices"][0]["text"].strip()
+    except Exception as e:
+        print(f"Build Summary failed: {e}")
+        return ""
+
 # ------------------------ Main index builder -----------------------------
 
 def build_index(
@@ -43,7 +68,9 @@ def build_index(
     artifacts_dir: os.PathLike,
     index_prefix: str,
     use_multiprocessing: bool = False,
-    use_headings: bool = False
+    use_headings: bool = False,
+    build_summaries: bool = False,
+    gen_model_path: str = None
 ) -> None:
     """
     Extract sections, chunk, embed, and build both FAISS and BM25 indexes.
@@ -69,6 +96,7 @@ def build_index(
     current_page = 1
     total_chunks = 0
     heading_stack = []
+    subsection_summaries = {}
 
     # Step 1: Chunk using DocumentChunker
     for i, c in enumerate(sections):
@@ -96,6 +124,33 @@ def build_index(
 
         # Regex to find page markers like "--- Page 3 ---"
         page_pattern = re.compile(r'--- Page (\d+) ---')
+        
+        if build_summaries and gen_model_path:
+            print(f"Building summary for {full_section_path}\n")
+            summary = build_summary(c["content"], gen_model_path)
+            
+            if summary:
+                summary_context = f"[SECTION SUMMARY] Title: {full_section_path} Content: "
+                final_summary = summary_context + summary
+                print(final_summary)
+                all_chunks.append(final_summary)
+                
+                subsection_summaries.setdefault(chapter_num, []).append(final_summary)
+                
+                sources.append(markdown_file)
+                metadata.append({
+                    "filename": markdown_file,
+                    "mode": "summary",
+                    "char_len": len(summary),
+                    "word_len": len(summary.split()),
+                    "section": c['heading'],
+                    "section_path": full_section_path,
+                    "text_preview": summary[:100],
+                    "page_numbers": [current_page],
+                    "chunk_id": total_chunks,
+                    "is_summary": True
+                })
+                total_chunks += 1
 
         # Iterate through each chunk produced from this section
         for sub_chunk_id, sub_chunk in enumerate(sub_chunks):
@@ -146,7 +201,8 @@ def build_index(
                 "section_path": full_section_path,
                 "text_preview": clean_chunk[:100],
                 "page_numbers": sorted(list(chunk_pages)),
-                "chunk_id": total_chunks + sub_chunk_id
+                "chunk_id": total_chunks + sub_chunk_id,
+                "is_summary": False
             }
 
             # Prepare chunk with prefix
@@ -163,6 +219,34 @@ def build_index(
             metadata.append(meta)
 
         total_chunks += len(sub_chunks)
+
+    if build_summaries and gen_model_path:
+        for chapter_num, summaries in subsection_summaries.items():
+            if len(summaries) == 0 or chapter_num == 0:
+                continue
+            
+            print(f"Building aggregate summary for {chapter_num}\n")
+            
+            aggregate_summary = build_summary("\n\n".join(summaries), gen_model_path)
+            
+            if aggregate_summary:
+                summary_context = f"[SECTION CHAPTER SUMMARY] Chapter: {chapter_num} Content: "
+                all_chunks.append(summary_context + aggregate_summary)
+                sources.append(markdown_file)
+                metadata.append({
+                    "filename": markdown_file,
+                    "mode": "summary",
+                    "char_len": len(aggregate_summary),
+                    "word_len": len(aggregate_summary.split()),
+                    "section": f"Chapter {chapter_num} Summary",
+                    "section_path": f"Chapter {chapter_num}",
+                    "text_preview": aggregate_summary[:100],
+                    "page_numbers": [],
+                    "chunk_id": total_chunks,
+                    "is_summary": True
+                })
+                total_chunks += 1
+            
 
     # Convert the sets to sorted lists for a clean, predictable output
     final_map = {}
