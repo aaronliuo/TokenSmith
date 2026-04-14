@@ -14,6 +14,8 @@ TODO: verify below assertions with data
     benefit from semantic similarity (FAISS).
   • Procedural queries (how-to, steps) → benefit from wider candidate pools and tag overlap, 
     since relevant steps may be scattered.
+  • Summary queries → broader descriptive answers about an aggregate area of the text, 
+    need more broader aggregate chunks and keyword matches of BM25
 """
 class HeuristicQueryPlanner(QueryPlanner):
     @property
@@ -26,6 +28,8 @@ class HeuristicQueryPlanner(QueryPlanner):
 
     def classify(self, query: str) -> str:
         q = query.lower()
+        if any(x in q for x in ["summarize", "overview", "summary"]):
+            return "summary"
         if any(x in q for x in ["what is", "define", "definition"]):
             return "definition"
         if any(x in q for x in ["why", "explain", "because"]):
@@ -48,6 +52,9 @@ class HeuristicQueryPlanner(QueryPlanner):
             cfg.pool_size = max(cfg.pool_size, cfg.top_k * 5)
             cfg.ranker_weights = {"faiss": 0.6, "bm25": 0.4}
 
+        elif kind == "summary":
+            cfg.ranker_weights = {"faiss": 0.4, "bm25": 0.6}
+        
         else:
             print("Unknown query type. Defaulting to explanatory.")
             cfg.ranker_weights = {"faiss": 0.7, "bm25": 0.3}
