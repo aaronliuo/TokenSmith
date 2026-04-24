@@ -75,3 +75,17 @@ benchmarks:
     keywords: ["lossy decomposition", "spurious tuples", "lossless join", "superkey", "natural join", "information loss", "functional dependency"]
     similarity_threshold: 0.70
     ideal_retrieved_chunks: [431, 430, 432, 433, 440]
+
+  - id: "aggregate_summary"
+    question: "Summarize chapter 3"
+    expected_answer: "Placeholder"
+    keywords: ["placeholder"]
+    similarity_threshold: 0.7
+    ideal_retrieved_chunks: [10]
+
+  - id: "aggregate_overview"
+    question: "Provide an overview of chapter 5"
+    expected_answer: "Placeholder"
+    keywords: ["placeholder"]
+    similarity_threshold: 0.7
+    ideal_retrieved_chunks: [10]

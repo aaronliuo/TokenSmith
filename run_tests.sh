@@ -18,20 +18,8 @@ echo "----------------------------------------"
 # Initialize Conda for the script session
 source $(conda info --base)/etc/profile.d/conda.sh
 
-# echo "Building TokenSmith environment (compiling llama.cpp with CUDA)..."
-# make build
-# echo "----------------------------------------"
-
 echo "Activating tokensmith environment..."
 conda activate tokensmith
-echo "----------------------------------------"
-
-echo "Running PDF extraction pipeline..."
-make run-extract
-echo "----------------------------------------"
-
-echo "Running indexing pipeline (FAISS + BM25)..."
-make run-index
 echo "----------------------------------------"
 
 echo "running automated benchmark test questions..."
