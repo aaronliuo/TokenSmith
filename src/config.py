@@ -20,7 +20,7 @@ class RAGConfig:
     # retrieval + ranking
     top_k: int = 10
     num_candidates: int = 60
-    embed_model: str = "models/Qwen3-Embedding-4B-Q5_K_M.gguf"
+    embed_model: str = "models/embedders/Qwen3-Embedding-4B-Q5_K_M.gguf"
     ensemble_method: str = "rrf"
     rrf_k: int  = 60
     ranker_weights: Dict[str, float] = field(
@@ -31,7 +31,7 @@ class RAGConfig:
 
     # generation
     max_gen_tokens: int = 400
-    gen_model: str = "models/qwen2.5-3b-instruct-q8_0.gguf"
+    gen_model: str = "models/generators/qwen2.5-3b-instruct-q8_0.gguf"
     
     # testing
     system_prompt_mode: str = "baseline"
