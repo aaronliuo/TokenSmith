@@ -42,7 +42,7 @@ def build_summary(text: str, model_path: str):
         <|im_end|>
         <|im_start|>user
         Text Content:
-        {text[:10000]}
+        {text[:7500]}
         
         Provide a summary. End with {ANSWER_END}
         <|im_end|>
