@@ -42,7 +42,7 @@ def build_summary(text: str, model_path: str):
         <|im_end|>
         <|im_start|>user
         Text Content:
-        {text[:12000]}
+        {text[:10000]}
         
         Provide a summary. End with {ANSWER_END}
         <|im_end|>
@@ -51,7 +51,7 @@ def build_summary(text: str, model_path: str):
     """)
     prompt = text_cleaning(prompt)
     try:
-        summary = run_llama_cpp(prompt, model_path, max_tokens=400, temperature=0.7)
+        summary = run_llama_cpp(prompt, model_path, max_tokens=450, temperature=0.6)
         return summary["choices"][0]["text"].strip()
     except Exception as e:
         print(f"Build Summary failed: {e}")
