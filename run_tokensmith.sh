@@ -2,8 +2,7 @@
 #SBATCH -J TokenSmith-RAG
 #SBATCH -N 1 --ntasks-per-node=1 --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --gres=gpu:A100:1
-#SBATCH -t 02:00:00
+#SBATCH -t 10:00:00
 #SBATCH -o tokensmith-%j.out
 
 cd $SLURM_SUBMIT_DIR

@@ -78,14 +78,18 @@ benchmarks:
 
   - id: "aggregate_summary"
     question: "Summarize chapter 3"
-    expected_answer: "Placeholder"
-    keywords: ["placeholder"]
+    expected_answer: "This chapter provides a comprehensive introduction to SQL (Structured Query Language), the standard language for managing relational databases. It explains that SQL is primarily divided into the Data-Definition Language (DDL) for structuring databases with tables and constraints, and the Data-Manipulation Language (DML) for querying and modifying data. The foundation of SQL querying relies on the select, from, and where clauses to retrieve specific data, along with basic operations for renaming and sorting results. To handle more complex data retrieval, SQL supports mathematical set operations like union and intersect, manages missing data by utilizing a third \"unknown\" truth value for nulls, and allows for data aggregation by grouping information. Furthermore, SQL permits nested subqueries to be embedded within main queries for advanced filtering and calculations. Finally, the chapter details how to actively modify the database contents, covering the specific commands required for inserting, updating, and deleting information."
+    keywords: ["SQL", "Data-Definition Language", "query clauses", "set operations", "aggregation", "Data-Manipulation Language", "nested subqueries"]
     similarity_threshold: 0.7
-    ideal_retrieved_chunks: [10]
 
   - id: "aggregate_overview"
     question: "Provide an overview of chapter 5"
-    expected_answer: "Placeholder"
-    keywords: ["placeholder"]
+    expected_answer: "This chapter explores advanced SQL capabilities, beginning with how SQL queries can be integrated into host languages like C and Java using embedded and dynamic SQL, specifically through ODBC and JDBC application program interfaces. It explains how to define functions and procedures using SQL procedural extensions that support iteration and conditional statements. The chapter also covers triggers, which are designed to automatically execute predefined actions when specific events and conditions occur, serving as valuable tools for implementing business rules and audit logging. Furthermore, it details how to handle complex operations, such as transitive closures, by utilizing either iteration or recursive SQL queries via recursive views or the with clause. Finally, the text introduces several advanced aggregation features, including ranking, windowing, pivot, and rollup or cube operations, which simplify the formulation of complex aggregates and enable more efficient query evaluation."
+    keywords: ["ODBC", "JDBC", "dynamic SQL", "procedural extensions", "recursive queries", "ranking and windowing"]
     similarity_threshold: 0.7
-    ideal_retrieved_chunks: [10]
+
+  - id: "aggregate_overview_2"
+    question: "Provide an overview of chapter 15"
+    expected_answer: "This chapter details the mechanics of database query processing, beginning with the system translating a user's query into an internal form based on relational algebra, during which a parser checks syntax, verifies relation names, and resolves view references. Because multiple methods exist for computing a query, a query optimizer is responsible for transforming it into the most efficient equivalent. The text outlines various execution strategies: simple selections utilize linear scans or indices, while the external sort-merge algorithm handles sorting relations that exceed memory limits. Depending on index availability and data organization, natural joins can be processed using block nested-loop, indexed nested-loop, merge join, or hash-join strategies. Furthermore, the chapter highlights a fundamental duality between sorting and hashing, noting that both techniques can be used interchangeably to implement duplicate elimination, projection, set operations, and aggregation. Finally, it contrasts two approaches for evaluating complex expressions: materialization, which computes and stores intermediate subexpression results on disk, and pipelining, which improves efficiency by passing generated results directly to parent expressions to avoid unnecessary disk writes."
+    keywords: ["query parsing", "relational algebra", "query optimization", "join algorithms", "materialization", "pipelining"]
+    similarity_threshold: 0.7

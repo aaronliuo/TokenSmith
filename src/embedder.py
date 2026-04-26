@@ -129,9 +129,14 @@ class SentenceTransformer:
                 
             except Exception as e:
                 print(f"Error encoding batch: {e}")
-                # Fallback: encode one by one if batch fails, or append zeros
-                for _ in batch_texts:
-                    embeddings.append([0.0] * self.embedding_dimension)
+                    # Fallback: encode one by one if batch fails
+                for text in batch_texts:
+                    try:
+                        emb = self.model.create_embedding(text)['data'][0]['embedding']
+                        embeddings.append(emb)
+                    except Exception as inner_e:
+                        print(f"Error encoding single text: {inner_e}")
+                        embeddings.append([0.0] * self.embedding_dimension)
                 
         vecs = np.array(embeddings, dtype=np.float32)
         

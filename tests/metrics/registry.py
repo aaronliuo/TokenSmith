@@ -15,6 +15,7 @@ class MetricRegistry:
             SemanticSimilarityMetric,
             KeywordMatchMetric,
             NLIEntailmentMetric,
+            LLMJudgeMetric,
             AsyncLLMJudgeMetric,
             ChunkRetrievalMetric
         )
@@ -22,6 +23,7 @@ class MetricRegistry:
         self.register(SemanticSimilarityMetric())
         self.register(KeywordMatchMetric())
         self.register(NLIEntailmentMetric())
+        self.register(LLMJudgeMetric())
         self.register(AsyncLLMJudgeMetric())
         self.register(ChunkRetrievalMetric())
 
