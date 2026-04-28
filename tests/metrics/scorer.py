@@ -37,9 +37,9 @@ class SimilarityScorer:
         total_weight = 0.0
         
         for name, metric in active_metrics.items():
-            # For LLM judge metrics, pass question instead of expected answer
+            # For LLM judge metrics, pass the question as an additional keyword argument
             if name in ("llm_judge", "async_llm_judge") and question:
-                score = metric.calculate(answer, question, keywords)
+                score = metric.calculate(answer, expected, keywords, question=question)
             elif name == "chunk_retrieval":
                 score = metric.calculate(ideal_retrieved_chunks, actual_retrieved_chunks)
             else:

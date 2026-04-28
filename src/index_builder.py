@@ -97,6 +97,7 @@ def build_index(
     total_chunks = 0
     heading_stack = []
     subsection_summaries = {}
+    chapter_pages = {}
 
     # Step 1: Chunk using DocumentChunker
     for i, c in enumerate(sections):
@@ -184,6 +185,9 @@ def build_index(
                 except (IndexError, ValueError):
                     continue
 
+            # Track all pages spanned by this chapter
+            chapter_pages.setdefault(chapter_num, set()).update(chunk_pages)
+
             # Clean sub_chunk by removing page markers
             clean_chunk = re.sub(page_pattern, '', sub_chunk).strip()
             
@@ -231,8 +235,17 @@ def build_index(
             
             if aggregate_summary:
                 summary_context = f"[SECTION CHAPTER SUMMARY] Chapter: {chapter_num} Content: "
+                print(aggregate_summary)
                 all_chunks.append(summary_context + aggregate_summary)
                 sources.append(markdown_file)
+                
+                # Get all pages associated with this chapter
+                c_pages = sorted(list(chapter_pages.get(chapter_num, set())))
+                
+                # Map the aggregate summary to all chapter pages so it gets keyword boosts
+                for p in c_pages:
+                    page_to_chunk_ids.setdefault(p, set()).add(total_chunks)
+                    
                 metadata.append({
                     "filename": markdown_file,
                     "mode": "summary",
@@ -241,7 +254,7 @@ def build_index(
                     "section": f"Chapter {chapter_num} Summary",
                     "section_path": f"Chapter {chapter_num}",
                     "text_preview": aggregate_summary[:100],
-                    "page_numbers": [],
+                    "page_numbers": c_pages,
                     "chunk_id": total_chunks,
                     "is_summary": True
                 })

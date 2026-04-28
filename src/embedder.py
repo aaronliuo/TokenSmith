@@ -119,24 +119,18 @@ class SentenceTransformer:
             batch_texts = texts[start_idx:end_idx]
             
             try:
-                # IMPORTANT CHANGE: Pass the entire LIST to the model at once.
-                # This triggers the native C++/Metal batch processing logic.
-                response = self.model.create_embedding(batch_texts)
+                # Process texts one by one to avoid sequence ID limits in llama.cpp
+                batch_embeddings = []
+                for text in batch_texts:
+                    response = self.model.create_embedding(text)
+                    batch_embeddings.append(response['data'][0]['embedding'])
                 
-                # Extract the list of embedding vectors from the response
-                batch_embeddings = [item['embedding'] for item in response['data']]
                 embeddings.extend(batch_embeddings)
                 
             except Exception as e:
                 print(f"Error encoding batch: {e}")
-                    # Fallback: encode one by one if batch fails
-                for text in batch_texts:
-                    try:
-                        emb = self.model.create_embedding(text)['data'][0]['embedding']
-                        embeddings.append(emb)
-                    except Exception as inner_e:
-                        print(f"Error encoding single text: {inner_e}")
-                        embeddings.append([0.0] * self.embedding_dimension)
+                for _ in batch_texts:
+                    embeddings.append([0.0] * self.embedding_dimension)
                 
         vecs = np.array(embeddings, dtype=np.float32)
         

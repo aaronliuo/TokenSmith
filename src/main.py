@@ -137,6 +137,7 @@ def get_answer(
         # print(f"Retrieval query: {retrieval_query}")
         if cfg.use_hyde:
             retrieval_query = generate_hypothetical_document(question, cfg.gen_model, max_tokens=cfg.hyde_max_tokens)
+            hyde_query = retrieval_query
         
         pool_n = max(cfg.num_candidates, cfg.top_k + 10)
         raw_scores: Dict[str, Dict[int, float]] = {}
@@ -152,13 +153,47 @@ def get_answer(
         ordered, scores = ranker.rank(raw_scores=raw_scores)
         # print(f"Ordered candidate indices after ranking: {ordered[:cfg.top_k]}")
         # print(f"Corresponding scores: {scores[:cfg.top_k]}")
-        topk_idxs = filter_retrieved_chunks(cfg, chunks, ordered)
+        topk_idxs = filter_retrieved_chunks(cfg, chunks, ordered, query=question, metadata=artifacts.get("meta"))
+        
+        # Ensure metadata is available even if test framework didn't load it
+        meta = artifacts.get("meta")
+        if not meta:
+            try:
+                import pickle
+                artifacts_dir = cfg.get_artifacts_directory()
+                with open(artifacts_dir / f"{args.index_prefix}_meta.pkl", "rb") as f:
+                    meta = pickle.load(f)
+                artifacts["meta"] = meta
+            except Exception:
+                pass
+                
+        topk_idxs = filter_retrieved_chunks(cfg, chunks, ordered, query=question, metadata=meta)
         ranked_chunks = [chunks[i] for i in topk_idxs]
         # print(f"Top-{cfg.top_k} chunk indices after filtering: {topk_idxs}")
         # print("Len Ranked chunks:", len(ranked_chunks))
         # print("Example ranked chunk content:", ranked_chunks[0] if ranked_chunks else "No chunks retrieved")
         
+        # Step 3: Final re-ranking
+        is_summary = any(w in question.lower() for w in ["summarize", "summary", "overview"])
         
+        # Skip reranking for summaries to preserve our explicit prioritization
+        if not is_summary:
+            reranked_chunks = rerank(question, ranked_chunks, mode=cfg.rerank_mode, top_n=cfg.rerank_top_k)
+            
+            # Re-map the reranked strings back to their global indices to fix logging/page citations
+            new_topk_idxs = []
+            for rc in reranked_chunks:
+                try:
+                    local_idx = ranked_chunks.index(rc)
+                    new_topk_idxs.append(topk_idxs[local_idx])
+                except ValueError:
+                    pass
+            
+            ranked_chunks = reranked_chunks
+            topk_idxs = new_topk_idxs
+        # print("Reranked Chunks", type(ranked_chunks), len(ranked_chunks), type(ranked_chunks[0]) if ranked_chunks else "No chunks")
+        # print("Example reranked chunk content:", ranked_chunks[0] if ranked_chunks else "No chunks after reranking")
+
         # Capture chunk info if in test mode
         if is_test_mode:
             # Compute individual ranker ranks
@@ -244,8 +279,8 @@ def get_answer(
                 "max_tokens": cfg.max_gen_tokens
             },
             top_idxs=topk_idxs,
-            chunks=chunks,
-            sources=sources,
+            chunks=[chunks[i] for i in topk_idxs],
+            sources=[sources[i] for i in topk_idxs],
             page_map=page_nums,
             full_response=ans,
             top_k=len(topk_idxs),

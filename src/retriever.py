@@ -73,9 +73,70 @@ def get_page_numbers(chunk_indices: list[int], metadata: list[dict]) -> dict[int
 
 # -------------------------- Filtering logic -----------------------------
 
-def filter_retrieved_chunks(cfg: RAGConfig, chunks, ordered):
-    topk_idxs = ordered[:cfg.top_k]
-    return topk_idxs
+def filter_retrieved_chunks(
+    cfg: RAGConfig, 
+    chunks: List[str], 
+    ordered: List[int], 
+    query: str = "", 
+    metadata: Optional[List[Dict]] = None
+) -> List[int]:
+    import re
+    
+    if not query or not metadata:
+        return ordered[:cfg.top_k]
+
+    chapter_matches = re.findall(r'(?i)(?:chapter|section|part|appendix)\s+(\d+)', query)
+    target_chapters = {int(c) for c in chapter_matches} if chapter_matches else set()
+
+    is_summary = any(w in query.lower() for w in ["summarize", "summary", "overview"])
+
+    filtered_ordered = []
+
+    for idx in ordered:
+        if idx < len(metadata):
+            meta = metadata[idx]
+
+            # Filter out chunks that are definitively from the wrong chapter
+            if target_chapters:
+                section_path = meta.get("section_path", "")
+                meta_chapter_match = re.search(r'(?i)(?:chapter|section|part|appendix)\s+(\d+)', section_path)
+                if meta_chapter_match:
+                    meta_chapter = int(meta_chapter_match.group(1))
+                    if meta_chapter not in target_chapters:
+                        continue  # Skip chunks from other chapters
+
+        filtered_ordered.append(idx)
+
+    # Re-prioritize aggregate chapter summaries if it's a summary query
+    if is_summary:
+        summaries = []
+        others = []
+        for idx in filtered_ordered:
+            meta = metadata[idx]
+            should_prioritize = False
+            
+            if meta.get("is_summary"):
+                if target_chapters:
+                    # Must be the aggregate chapter summary for the target chapter(s)
+                    for tc in target_chapters:
+                        if f"Chapter {tc} Summary" in meta.get("section", ""):
+                            should_prioritize = True
+                            break
+                else:
+                    # Prioritize any summary chunk
+                    should_prioritize = True
+            
+            if should_prioritize:
+                summaries.append(idx)
+            else:
+                others.append(idx)
+        filtered_ordered = summaries + others
+
+    # Fallback to the original ordering if filtering removed everything
+    if not filtered_ordered:
+        filtered_ordered = ordered
+
+    return filtered_ordered[:cfg.top_k]
 
 # -------------------------- Retrieval core ------------------------------
 
